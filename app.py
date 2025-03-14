@@ -144,7 +144,7 @@ def generate_concise_resume(raw_cv, rfp_requirements=None):
             Here is the full consultant Resume:
 
             {raw_cv}
-
+ 
             Begin the formatted, condensed 2-page resume below:
         """
         
@@ -193,66 +193,96 @@ def clean_text_for_download(markdown_text):
     return text
 
 def markdown_to_pdf_reportlab(markdown_text):
-    """Convert markdown to PDF using ReportLab."""
+    """Convert markdown to PDF using ReportLab with enhanced styling for a professional resume."""
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, 
-                          rightMargin=72, leftMargin=72,
-                          topMargin=72, bottomMargin=72)
+    
+    # Use letter size with margins optimized for a resume
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=letter,
+        rightMargin=54,  # Slightly reduced margins
+        leftMargin=54,
+        topMargin=54,
+        bottomMargin=54
+    )
     
     # Define styles
     styles = getSampleStyleSheet()
     
+    # Create a professional color scheme
+    primary_color = colors.HexColor('#1a5276')  # Professional dark blue
+    secondary_color = colors.HexColor('#2874a6')  # Medium blue
+    accent_color = colors.HexColor('#3498db')  # Light blue
+    text_color = colors.HexColor('#2c3e50')  # Dark gray-blue for text
+    
     # Create custom styles with different names to avoid conflicts
-    custom_heading1 = ParagraphStyle(
-        name='CustomHeading1', 
+    title_style = ParagraphStyle(
+        name='ResumeTitle', 
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=18, 
-        spaceAfter=8,
-        textColor=colors.HexColor('#2c3e50'),
+        fontSize=20, 
+        spaceAfter=10,
+        textColor=primary_color,
+        alignment=TA_CENTER,
         borderPadding=5,
         borderWidth=0,
-        borderColor=colors.white,
-        borderRadius=5
+        leading=24  # Line height
     )
     
-    custom_heading2 = ParagraphStyle(
-        name='CustomHeading2', 
+    section_style = ParagraphStyle(
+        name='ResumeSection', 
         parent=styles['Heading2'],
         fontName='Helvetica-Bold',
-        fontSize=16, 
-        spaceAfter=6,
-        textColor=colors.HexColor('#34495e')
+        fontSize=14, 
+        spaceAfter=8,
+        spaceBefore=12,
+        textColor=primary_color,
+        borderColor=primary_color,
+        borderWidth=0,
+        borderPadding=5,
+        borderRadius=0,
+        leading=16,
+        # Add a bottom border
+        endDots=None,
+        bulletIndent=0,
+        firstLineIndent=0,
+        leftIndent=0,
+        rightIndent=0
     )
     
-    custom_heading3 = ParagraphStyle(
-        name='CustomHeading3', 
+    subsection_style = ParagraphStyle(
+        name='ResumeSubsection', 
         parent=styles['Heading3'],
         fontName='Helvetica-Bold',
-        fontSize=14, 
+        fontSize=12, 
         spaceAfter=4,
-        textColor=colors.HexColor('#2c3e50'),
-        borderPadding=5,
-        borderWidth=0,
-        borderColor=colors.white,
-        borderRadius=5,
-        leftIndent=10
+        spaceBefore=6,
+        textColor=secondary_color,
+        leading=14,
+        leftIndent=0
     )
     
-    custom_normal = ParagraphStyle(
-        name='CustomNormal',
+    normal_style = ParagraphStyle(
+        name='ResumeNormal',
         parent=styles['Normal'],
         fontName='Helvetica',
         fontSize=10,
-        spaceAfter=6
+        spaceAfter=6,
+        textColor=text_color,
+        leading=14
     )
-
-    custom_list_item = ParagraphStyle(
-        name='CustomListItem',
+    
+    list_item_style = ParagraphStyle(
+        name='ResumeListItem',
         parent=styles['Normal'],
         fontName='Helvetica',
         fontSize=10,
-        leftIndent=20
+        leftIndent=10,
+        firstLineIndent=-10,  # Hanging indent for bullet points
+        textColor=text_color,
+        leading=14,
+        spaceBefore=2,
+        spaceAfter=2
     )
     
     # Parse markdown to ReportLab elements
@@ -261,42 +291,84 @@ def markdown_to_pdf_reportlab(markdown_text):
     # Split by lines to process headers and content
     lines = markdown_text.split('\n')
     i = 0
+    
+    # Add a function to clean text for PDF
+    def clean_text_for_pdf(text):
+        # Replace markdown bold/italic with actual formatting
+        text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+        text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+        # Replace backticks with appropriate formatting
+        text = re.sub(r'`(.*?)`', r'<font face="Courier">\1</font>', text)
+        return text
+    
+    # Process the first line as the resume title if it's a level 1 heading
+    if lines[0].strip().startswith('# '):
+        title_text = clean_text_for_pdf(lines[0].strip()[2:])
+        elements.append(Paragraph(title_text, title_style))
+        elements.append(Spacer(1, 10))
+        i = 1
+    
+    # Track if we're inside a section to handle spacing
+    in_section = False
+    
     while i < len(lines):
         line = lines[i].strip()
         
         # Process headers
         if line.startswith('# '):
-            elements.append(Paragraph(line[2:], custom_heading1))
-            elements.append(Spacer(1, 6))
+            # Main title
+            title_text = clean_text_for_pdf(line[2:])
+            elements.append(Paragraph(title_text, title_style))
+            elements.append(Spacer(1, 10))
+            in_section = False
+            
         elif line.startswith('## '):
-            elements.append(Paragraph(line[3:], custom_heading2))
-            elements.append(Spacer(1, 4))
-        elif line.startswith('### '):
-            elements.append(Paragraph(line[4:], custom_heading3))
+            # Section headers with horizontal rule effect
+            section_text = clean_text_for_pdf(line[3:])
+            elements.append(Spacer(1, 6))
+            elements.append(Paragraph(section_text, section_style))
+            # Add a thin horizontal line
             elements.append(Spacer(1, 2))
+            elements.append(Paragraph('<hr width="100%" color="{0}" />'.format(primary_color.hexval()[1:]), 
+                                     ParagraphStyle(name='HRule', alignment=TA_LEFT)))
+            elements.append(Spacer(1, 6))
+            in_section = True
+            
+        elif line.startswith('### '):
+            # Subsection headers
+            subsection_text = clean_text_for_pdf(line[4:])
+            elements.append(Paragraph(subsection_text, subsection_style))
+            elements.append(Spacer(1, 4))
+            in_section = True
         
         # Process lists
         elif line.startswith('- '):
             # Collect all list items
             list_items = []
             while i < len(lines) and lines[i].strip().startswith('- '):
-                item_text = lines[i].strip()[2:]
-                list_items.append(ListItem(Paragraph(item_text, custom_list_item)))
+                item_text = clean_text_for_pdf(lines[i].strip()[2:])
+                # Create a custom bullet point
+                bullet_para = Paragraph('• ' + item_text, list_item_style)
+                list_items.append(bullet_para)
                 i += 1
             
-            # Add the list to elements
-            if list_items:
-                elements.append(ListFlowable(list_items, bulletType='bullet', leftIndent=20, spaceBefore=0, spaceAfter=6))
-                continue  # Skip the increment at the end since we've already advanced
+            # Add the list items directly (not using ListFlowable for better control)
+            for item in list_items:
+                elements.append(item)
+            
+            continue  # Skip the increment at the end since we've already advanced
         
         # Process normal paragraphs
         elif line:
-            elements.append(Paragraph(line, custom_normal))
-            elements.append(Spacer(1, 4))
-        
+            para_text = clean_text_for_pdf(line)
+            elements.append(Paragraph(para_text, normal_style))
+            
         # Add a small space for empty lines to maintain structure
         elif i > 0 and i < len(lines) - 1 and not lines[i-1].strip() and lines[i+1].strip():
-            elements.append(Spacer(1, 8))
+            if in_section:
+                elements.append(Spacer(1, 6))  # Smaller space within sections
+            else:
+                elements.append(Spacer(1, 10))  # Larger space between major sections
         
         i += 1
     
@@ -442,7 +514,8 @@ def main():
         if st.session_state.rfp_processed and st.session_state.rfp_requirements:
             tabs_to_show.append("RFP Requirements")
         if st.session_state.resume_analyzed and st.session_state.cleaned_markdown:
-            tabs_to_show.append("Markdown Resume")
+            # Hide the Markdown Resume tab as requested, but keep the PDF Generator
+            # tabs_to_show.append("Markdown Resume")  # Commented out to hide this tab
             tabs_to_show.append("PDF Generator")
         
         # Only show tabs if there are results to display
@@ -466,50 +539,45 @@ def main():
                     )
                 tab_index += 1
             
-            # Markdown Resume tab
+            # Markdown Resume tab (hidden but functionality remains)
             if st.session_state.resume_analyzed and st.session_state.cleaned_markdown:
-                with tabs[tab_index]:
-                    resume_title = "Optimized Resume"
-                    if st.session_state.rfp_processed and st.session_state.rfp_requirements:
-                        resume_title += " (Tailored to RFP)"
-                    
-                    st.write(f"### {resume_title}")
-                    st.markdown(st.session_state.cleaned_markdown)
-                    # Clean markdown for download
-                    clean_resume_text = clean_text_for_download(st.session_state.cleaned_markdown)
-                    st.download_button(
-                        label="Download Resume as Text",
-                        data=clean_resume_text,
-                        file_name="optimized_resume.txt",
-                        mime="text/plain"
-                    )
-                tab_index += 1
+                # The content is now outside of any tab, so we don't need to use tabs[tab_index]
+                # This content is now hidden from the UI
                 
-                # PDF Generator tab
-                with tabs[tab_index]:
-                    st.write("### PDF Generation")
-                    markdown_editor = st.text_area(
-                        "Edit Markdown (if needed):",
-                        value=st.session_state.cleaned_markdown,
-                        height=400
+                # We also don't increment tab_index since this tab is hidden
+                # Keep the variables and processing for potential future use
+                resume_title = "Optimized Resume"
+                if st.session_state.rfp_processed and st.session_state.rfp_requirements:
+                    resume_title += " (Tailored to RFP)"
+                
+                # Store these values but don't display them
+                clean_resume_text = clean_text_for_download(st.session_state.cleaned_markdown)
+                
+            # PDF Generator tab
+            with tabs[tab_index]:
+                st.write("### PDF Generation")
+                markdown_editor = st.text_area(
+                    "Edit Markdown (if needed):",
+                    value=st.session_state.cleaned_markdown,
+                    height=400
+                )
+                
+                # Use a form to prevent rerunning the whole app
+                with st.form(key="pdf_form"):
+                    generate_button = st.form_submit_button("Generate PDF")
+                    if generate_button:
+                        st.session_state.pdf_buffer = markdown_to_pdf_reportlab(markdown_editor)
+                        st.session_state.pdf_generated = True
+                
+                # Only show download button after PDF is generated
+                if st.session_state.pdf_generated and st.session_state.pdf_buffer is not None:
+                    st.success("PDF successfully generated!")
+                    st.download_button(
+                        label="Download PDF",
+                        data=st.session_state.pdf_buffer,
+                        file_name="optimized_resume.pdf",
+                        mime="application/pdf"
                     )
-                    
-                    # Use a form to prevent rerunning the whole app
-                    with st.form(key="pdf_form"):
-                        generate_button = st.form_submit_button("Generate PDF")
-                        if generate_button:
-                            st.session_state.pdf_buffer = markdown_to_pdf_reportlab(markdown_editor)
-                            st.session_state.pdf_generated = True
-                    
-                    # Only show download button after PDF is generated
-                    if st.session_state.pdf_generated and st.session_state.pdf_buffer is not None:
-                        st.success("PDF successfully generated!")
-                        st.download_button(
-                            label="Download PDF",
-                            data=st.session_state.pdf_buffer,
-                            file_name="optimized_resume.pdf",
-                            mime="application/pdf"
-                        )
 
 if __name__ == "__main__":
     main()
