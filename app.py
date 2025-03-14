@@ -16,7 +16,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListItem, L
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 
 # Configure Gemini API
-os.environ["GOOGLE_API_KEY"] = "AIzaSyDvc4O1ES0X2AA92Aw23iZcwgEanwTfqGo"
+os.environ["GOOGLE_API_KEY"] = ""
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
 def extract_text_from_pdf(pdf_file):
